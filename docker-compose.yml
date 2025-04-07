@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    restart: always
+    ports:
+      - "5000:5000"
+    depends_on:
+      - db
+      - redis
+    environment:
+      - DATABASE_URL=postgresql://ai_agent_user:ai_agent_password@db:5432/ai_agent_db
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=change_me_in_production
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./config:/app/config
+    networks:
+      - ai_agent_network
+
+  db:
+    image: postgres:13
+    restart: always
+    environment:
+      - POSTGRES_USER=ai_agent_user
+      - POSTGRES_PASSWORD=ai_agent_password
+      - POSTGRES_DB=ai_agent_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - ai_agent_network
+
+  redis:
+    image: redis:6
+    restart: always
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - ai_agent_network
+
+  nginx:
+    image: nginx:latest
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./nginx/ssl:/etc/nginx/ssl
+      - ./frontend/build:/usr/share/nginx/html
+    depends_on:
+      - app
+    networks:
+      - ai_agent_network
+
+networks:
+  ai_agent_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
